@@ -9,15 +9,9 @@
 
 (def now (java.time.OffsetDateTime/now))
 
-
+^::clerk/no-cache
 (def downloaded-google-sheet-csv
  "/home/david/Downloads/Apr Pushups Challenge  - Apr2023.csv")
-
-
-(def current-day-of-month
-  (->
-   now
-   (.getDayOfMonth)))
 
 
 (defn format-full [d]
@@ -55,17 +49,18 @@
 
 
 (defn chart-pushups [data]
-  (clerk/plotly
-   {:nextjournal/width :full}
-   {:layout
-    {:height 1000
-     :yaxis {}}
+  (let [days-to-display (inc (.getDayOfMonth now))]
+    (clerk/plotly
+     {:nextjournal/width :full}
+     {:layout
+      {:height 1000
+       :yaxis {}}
 
-    :data
-    (for [{:keys [name pushups]} data]
-      {:name name
-       :x (take (inc current-day-of-month) (map #(str "Apr " %) (range 1 31)))
-       :y (take (inc current-day-of-month) (convert-to-cumulative pushups))})}))
+      :data
+      (for [{:keys [name pushups]} data]
+        {:name name
+         :x (take days-to-display (map #(str "Apr " %) (range 1 31)))
+         :y (take days-to-display (convert-to-cumulative pushups))})})))
 
 
 (defn between
