@@ -1,3 +1,5 @@
 .lsp
 .cpcache
 .clj-kondo
+.nrepl-port
+.clerk

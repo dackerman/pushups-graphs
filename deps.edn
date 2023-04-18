@@ -1,4 +1,10 @@
 {:paths ["src"]
- :deps  {}
- :aliases 
- {:neil {:project {:name pushup-graphs/pushup-graphs}}}}
+ :deps  {io.github.nextjournal/clerk {:mvn/version "0.13.842"}
+         org.clojure/data.csv {:mvn/version "1.0.1"}}
+ :aliases
+ {:nextjournal/clerk
+  {:exec-fn nextjournal.clerk/build!
+   :exec-args {:index "src/pushup_graphs/pushup_graphs.clj"}
+   :nextjournal.clerk/aliases [:dev]}
+
+  :neil {:project {:name pushup-graphs/pushup-graphs}}} }
