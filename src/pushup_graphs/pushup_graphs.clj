@@ -90,7 +90,7 @@
   (format-short-date now)))
 
 
-(clerk/md "### Biggest improvement since yesterday")
+(clerk/md "### Biggest improvement yesterday")
 (clerk/table
  (->> pushups-data
       (map #(assoc % :rank-diff (- (:today-rank %) (:yesterday-rank %))))
