@@ -52,7 +52,9 @@
   (let [days-to-display (inc (.getDayOfMonth now))]
     (clerk/plotly
      {:nextjournal/width :full}
-     {:layout
+     {:config {}
+
+      :layout
       {:height 1000
        :yaxis {}}
 
