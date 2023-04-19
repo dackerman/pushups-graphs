@@ -1,6 +1,7 @@
 {:paths ["src"]
  :deps  {io.github.nextjournal/clerk {:mvn/version "0.13.842"}
-         org.clojure/data.csv {:mvn/version "1.0.1"}}
+         org.clojure/data.csv {:mvn/version "1.0.1"}
+         http-kit/http-kit {:mvn/version "2.6.0"}}
  :aliases
  {:nextjournal/clerk
   {:exec-fn nextjournal.clerk/build!

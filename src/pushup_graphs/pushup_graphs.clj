@@ -3,15 +3,15 @@
   (:require
    [nextjournal.clerk :as clerk]
    [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [org.httpkit.client :as http]))
 
 
 (def now (java.time.OffsetDateTime/now))
 
-^::clerk/no-cache
-(def downloaded-google-sheet-csv
- "/home/david/Downloads/Apr Pushups Challenge  - Apr2023.csv")
+
+(defn download-google-sheet! []
+  (:body @(http/get "https://docs.google.com/spreadsheets/d/1uBn9diObqs0Sz-ouS-iP63IZ5hu5GcsL73G5dVQxWqo/export?format=csv&id=1uBn9diObqs0Sz-ouS-iP63IZ5hu5GcsL73G5dVQxWqo&gid=1885606659")))
 
 
 (defn format-full [d]
@@ -32,16 +32,14 @@
      :pushups pushups
      :total (reduce + 0 pushups)}))
 
-
-(def pushups-data
-  (with-open [reader (io/reader (io/file downloaded-google-sheet-csv))]
-    (doall
-     (->> (csv/read-csv reader)
-          (drop 4)
-          (map parse-pushup-row)
-          (filter (comp not string/blank? :name))
-          (sort-by :total)
-          (reverse)))))
+(defn parse-pushups-csv [csv-input]
+  (doall
+   (->> (csv/read-csv csv-input)
+        (drop 4)
+        (map parse-pushup-row)
+        (filter (comp not string/blank? :name))
+        (sort-by :total)
+        (reverse))))
 
 
 (defn convert-to-cumulative [pushups]
@@ -71,6 +69,7 @@
    #(and (>= (:total %) lower)
          (< (:total %) upper))))
 
+(def pushups-data (parse-pushups-csv (download-google-sheet!)))
 
 {:nextjournal.clerk/visibility {:result :show}}
 
