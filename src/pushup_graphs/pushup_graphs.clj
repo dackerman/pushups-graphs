@@ -7,11 +7,13 @@
    [org.httpkit.client :as http]))
 
 
+^::clerk/no-cache
 (def now (java.time.OffsetDateTime/now))
 
+(def google-sheet-location "https://docs.google.com/spreadsheets/d/1uBn9diObqs0Sz-ouS-iP63IZ5hu5GcsL73G5dVQxWqo/export?format=csv&id=1uBn9diObqs0Sz-ouS-iP63IZ5hu5GcsL73G5dVQxWqo&gid=1885606659")
 
-(defn download-google-sheet! []
-  (:body @(http/get "https://docs.google.com/spreadsheets/d/1uBn9diObqs0Sz-ouS-iP63IZ5hu5GcsL73G5dVQxWqo/export?format=csv&id=1uBn9diObqs0Sz-ouS-iP63IZ5hu5GcsL73G5dVQxWqo&gid=1885606659")))
+(defn download-google-sheet! [_cache-buster]
+  (:body @(http/get google-sheet-location)))
 
 
 (defn format-full [d]
@@ -46,7 +48,7 @@
 
 
 (defn convert-to-cumulative [pushups]
-  (reductions + 0 pushups))
+  (rest (reductions + 0 pushups)))
 
 
 (defn chart-pushups [data]
@@ -68,7 +70,7 @@
 
 
 (def pushups-data
-  (->> (parse-pushups-csv (download-google-sheet!))
+  (->> (parse-pushups-csv (download-google-sheet! 8234))
        (sort-by :yesterday-total)
        (reverse)
        (map-indexed (fn [yesterday-rank m] (assoc m :yesterday-rank yesterday-rank)))
@@ -89,8 +91,9 @@
   "# Pushup rankings as of %s"
   (format-short-date now)))
 
+(clerk/md (str "Last run: " (format-full now)))
 
-(clerk/md "### Biggest improvement yesterday")
+(clerk/md "### Biggest improvement")
 (clerk/table
  (->> pushups-data
       (map #(assoc % :rank-diff (- (:today-rank %) (:yesterday-rank %))))
@@ -99,9 +102,9 @@
       (take 10)
       (map (fn [{:keys [name yesterday-rank today-rank rank-diff]}]
              {"Name" name
-              "Diff" (str "+ " (- rank-diff))
-              "Yesterday's Rank" yesterday-rank
-              "Today's Rank" today-rank}))))
+              "Improvement" (str "+ " (- rank-diff))
+              (str (format-short-date (.minusDays now 2)) " Rank") yesterday-rank
+              (str (format-short-date (.minusDays now 1)) " Rank") today-rank}))))
 
 
 (clerk/md "### Largest # of pushups yesterday")
@@ -113,7 +116,7 @@
       (take 10)
       (map (fn [{:keys [name pushups-done-yesterday]}]
              {"Name" name
-              "Pushups" pushups-done-yesterday}))))
+              (str "Pushups on " (format-short-date (.minusDays now 1))) pushups-done-yesterday}))))
 
 
 (clerk/md "## Ranking graphs
@@ -126,5 +129,3 @@ The graphs below show cumulative pushups done. Each graph shows 10 people at onc
     [:div
      [:h2 (format "Ranks %d - %d" (inc (* 10 rank)) (+ 10 (* 10 rank)))]
      (chart-pushups people)])))
-
-(clerk/md (str "Last run: " (format-full now)))
