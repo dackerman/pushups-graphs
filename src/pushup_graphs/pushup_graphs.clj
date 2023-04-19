@@ -32,12 +32,14 @@
      :pushups pushups
      :total (reduce + 0 pushups)}))
 
+
 (defn parse-pushups-csv [csv-input]
   (doall
    (->> (csv/read-csv csv-input)
         (drop 4)
         (map parse-pushup-row)
         (filter (comp not string/blank? :name))
+        (filter #(> (:total %) 0))
         (sort-by :total)
         (reverse))))
 
@@ -47,7 +49,7 @@
 
 
 (defn chart-pushups [data]
-  (let [days-to-display (inc (.getDayOfMonth now))]
+  (let [days-to-display (.getDayOfMonth now)]
     (clerk/plotly
      {:nextjournal/width :full}
      {:config {}
@@ -63,28 +65,30 @@
          :y (take days-to-display (convert-to-cumulative pushups))})})))
 
 
-(defn between
-  ([lower] (between lower 100000000))
-  ([lower upper]
-   #(and (>= (:total %) lower)
-         (< (:total %) upper))))
-
 (def pushups-data (parse-pushups-csv (download-google-sheet!)))
+
+
+(def partitioned-by-rank (partition 10 10 [] pushups-data))
+
 
 {:nextjournal.clerk/visibility {:result :show}}
 
-(clerk/md (str "# Pushup rankings as of " (format-short-date now)))
+(clerk/md
+ (format
+  "# Pushup rankings as of %s
 
-(clerk/md "## 2000+ pushups completed")
-(chart-pushups (filter (between 2000) pushups-data))
+Graphs show groups of 10 people at once, in order of how many they've done so far.
 
-(clerk/md "## 1000-2000 pushups completed")
-(chart-pushups (filter (between 1000 2000) pushups-data))
+Keep scrolling to find yourself in the rankings, or Ctrl+f to search for your name as it appears in the spreadsheet.
+" (format-short-date now)))
 
-(clerk/md "## 500-1000 pushups completed")
-(chart-pushups (filter (between 500 1000) pushups-data))
-
-(clerk/md "## 0-500 pushups completed")
-(chart-pushups (filter (between 0 500) pushups-data))
+(clerk/html
+ {:nextjournal/width :full}
+ (into
+  [:div]
+  (for [[rank people] (map-indexed vector partitioned-by-rank)]
+    [:div
+     [:h2 (format "Ranks %d - %d" (inc (* 10 rank)) (+ 10 (* 10 rank)))]
+     (chart-pushups people)])))
 
 (clerk/md (str "Last run: " (format-full now)))
