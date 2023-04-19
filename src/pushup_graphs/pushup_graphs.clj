@@ -27,9 +27,12 @@
 
 
 (defn parse-pushup-row [columns]
-  (let [pushups (map parse-pushup-number (take 30 (rest columns)))]
+  (let [current-day (dec (.getDayOfMonth now))
+        pushups (map parse-pushup-number (take 30 (rest columns)))]
     {:name (first columns)
      :pushups pushups
+     :yesterday-total (reduce + 0 (take (dec current-day) pushups))
+     :today-total (reduce + 0 (take current-day pushups))
      :total (reduce + 0 pushups)}))
 
 
@@ -39,9 +42,7 @@
         (drop 4)
         (map parse-pushup-row)
         (filter (comp not string/blank? :name))
-        (filter #(> (:total %) 0))
-        (sort-by :total)
-        (reverse))))
+        (filter #(> (:total %) 0)))))
 
 
 (defn convert-to-cumulative [pushups]
@@ -65,23 +66,58 @@
          :y (take days-to-display (convert-to-cumulative pushups))})})))
 
 
-(def pushups-data (parse-pushups-csv (download-google-sheet!)))
 
+(def pushups-data
+  (->> (parse-pushups-csv (download-google-sheet!))
+       (sort-by :yesterday-total)
+       (reverse)
+       (map-indexed (fn [yesterday-rank m] (assoc m :yesterday-rank yesterday-rank)))
+       (sort-by :today-total)
+       (reverse)
+       (map-indexed (fn [today-rank m] (assoc m :today-rank today-rank)))
+       (sort-by :total)
+       (reverse)))
 
 (def partitioned-by-rank (partition 10 10 [] pushups-data))
 
 
 {:nextjournal.clerk/visibility {:result :show}}
 
+
 (clerk/md
  (format
-  "# Pushup rankings as of %s
+  "# Pushup rankings as of %s"
+  (format-short-date now)))
 
-Graphs show groups of 10 people at once, in order of how many they've done so far.
 
-Keep scrolling to find yourself in the rankings, or Ctrl+f to search for your name as it appears in the spreadsheet.
-" (format-short-date now)))
+(clerk/md "### Biggest improvement since yesterday")
+(clerk/table
+ (->> pushups-data
+      (map #(assoc % :rank-diff (- (:today-rank %) (:yesterday-rank %))))
+      (filter #(< (:rank-diff %) 0))
+      (sort-by :rank-diff)
+      (take 10)
+      (map (fn [{:keys [name yesterday-rank today-rank rank-diff]}]
+             {"Name" name
+              "Diff" (str "+ " (- rank-diff))
+              "Yesterday's Rank" yesterday-rank
+              "Today's Rank" today-rank}))))
 
+
+(clerk/md "### Largest # of pushups yesterday")
+(clerk/table
+ (->> pushups-data
+      (map #(assoc % :pushups-done-yesterday (nth (:pushups %) (- (.getDayOfMonth now) 2) 0)))
+      (sort-by :pushups-done-yesterday)
+      (reverse)
+      (take 10)
+      (map (fn [{:keys [name pushups-done-yesterday]}]
+             {"Name" name
+              "Pushups" pushups-done-yesterday}))))
+
+
+(clerk/md "## Ranking graphs
+The graphs below show cumulative pushups done. Each graph shows 10 people at once, so keep scrolling or use Ctrl+f to find your name.")
 (clerk/html
  {:nextjournal/width :full}
  (into
